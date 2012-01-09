@@ -1,6 +1,6 @@
 # Copyright (c) 2007 Jan-Klaas Kollhof
 # Copyright (c) 2011 Jeff Garzik
-# Copyright (c) 2011 Jakob Kramer
+# Copyright (c) 2011, 2012 Jakob Kramer
 
 # This file is part of jsonrpc.
 
@@ -19,8 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
-  AuthServiceProxy has the following improvements over python-jsonrpc's
-  ServiceProxy class:
+  ServiceProxy of python-bitcoinrpc has the following improvements over
+  python-jsonrpc's ServiceProxy class:
 
   - HTTP connections persist for the life of the AuthServiceProxy object
     (if server supports HTTP/1.1)
@@ -45,16 +45,20 @@ try:
 except ImportError:
     import httplib
 
+__all__ = ['ServiceProxy', 'JSONRPCException']
+
 USER_AGENT = "AuthServiceProxy/0.1"
 
 HTTP_TIMEOUT = 30
 
 class JSONRPCException(Exception):
+
     def __init__(self, rpcError):
         Exception.__init__(self)
         self.error = rpcError
-        
-class AuthServiceProxy(object):
+
+class ServiceProxy(object):
+
     def __init__(self, serviceURL, serviceName=None):
         self.__serviceURL = serviceURL
         self.__serviceName = serviceName
@@ -71,42 +75,42 @@ class AuthServiceProxy(object):
             self.__conn = httplib.HTTPSConnection(self.__url.hostname, port,
                                                   None, None, False, HTTP_TIMEOUT)
         else:
-            self.__conn = httplib.HTTPConnection(self.__url.hostname, port, False,
-                                                 HTTP_TIMEOUT)
+            self.__conn = httplib.HTTPConnection(self.__url.hostname, port,
+                                                 False, HTTP_TIMEOUT)
 
     def __getattr__(self, name):
         if self.__serviceName != None:
             name = "%s.%s" % (self.__serviceName, name)
-        return AuthServiceProxy(self.__serviceURL, name)
+        return ServiceProxy(self.__serviceURL, name)
 
     def __call__(self, *args):
-         self.__idcnt += 1
+        self.__idcnt += 1
 
-         postdata = json.dumps({
-                'version': '1.1',
-                'method': self.__serviceName,
-                'params': args,
-                'id': self.__idcnt})
-         self.__conn.request('POST', self.__url.path, postdata,
-                 { 'Host' : self.__url.hostname,
-                  'User-Agent' : USER_AGENT,
-                  'Authorization' : self.__authhdr,
-                  'Content-type' : 'application/json' })
+        postdata = json.dumps({
+               'version': '1.1',
+               'method': self.__serviceName,
+               'params': args,
+               'id': self.__idcnt})
+        self.__conn.request('POST', self.__url.path, postdata,
+                { 'Host' : self.__url.hostname,
+                 'User-Agent' : USER_AGENT,
+                 'Authorization' : self.__authhdr,
+                 'Content-type' : 'application/json' })
 
-         httpresp = self.__conn.getresponse()
-         if httpresp is None:
-             raise JSONRPCException({
-                     'code' : -342, 'message' : 'missing HTTP response from server'})
+        httpresp = self.__conn.getresponse()
+        if httpresp is None:
+            raise JSONRPCException({
+                    'code': -342,
+                    'message': 'missing HTTP response from server'
+            })
 
-         resp = httpresp.read()
-         resp = resp.decode('utf8')
-         resp = json.loads(resp, parse_float=decimal.Decimal)
-         if resp['error'] != None:
-             raise JSONRPCException(resp['error'])
-         elif 'result' not in resp:
-             raise JSONRPCException({
-                     'code' : -343, 'message' : 'missing JSON-RPC result'})
-         else:
-             return resp['result']
-
-ServiceProxy = AuthServiceProxy
+        resp = httpresp.read()
+        resp = resp.decode('utf8')
+        resp = json.loads(resp, parse_float=decimal.Decimal)
+        if resp['error'] != None:
+            raise JSONRPCException(resp['error'])
+        elif 'result' not in resp:
+            raise JSONRPCException({
+                    'code' : -343, 'message' : 'missing JSON-RPC result'})
+        else:
+            return resp['result']
