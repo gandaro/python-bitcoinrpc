@@ -63,10 +63,7 @@ class ServiceProxy(object):
         self.__serviceURL = serviceURL
         self.__serviceName = serviceName
         self.__url = urlparse.urlparse(serviceURL)
-        if self.__url.port is None:
-            port = 80
-        else:
-            port = self.__url.port
+        port = self.__url.port or 80
         self.__idcnt = 0
         authpair = "%s:%s" % (self.__url.username, self.__url.password)
         authpair = authpair.encode('utf8')
@@ -79,7 +76,7 @@ class ServiceProxy(object):
                                                  False, HTTP_TIMEOUT)
 
     def __getattr__(self, name):
-        if self.__serviceName != None:
+        if self.__serviceName is not None:
             name = "%s.%s" % (self.__serviceName, name)
         return ServiceProxy(self.__serviceURL, name)
 
